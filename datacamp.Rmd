@@ -1,0 +1,481 @@
+---
+title: "DataCamp Financial Trading in R"
+output: html_notebook
+---
+
+Working notes for following allong with the [DataCamp Financial Trading in R](https://campus.datacamp.com/courses/financial-trading-in-r/)
+course.
+
+```{r setup}
+library(quantstrat)
+library(IKTrading)
+#library(tidyverse)
+
+options("getSymbols.auto.assign" = FALSE)
+options("getSymbols.warning4.0" = FALSE)
+```
+
+
+# Chapter 1 - Trading Basics
+
+```{r}
+# Get SPY from Yahoo Finance ("yahoo")
+SPY <- getSymbols("SPY", from = "2000-01-01", to = "2016-06-30", src =  "yahoo", adjust =  TRUE)
+
+# Plot the closing price of SPY
+plot(Cl(SPY))
+```
+
+Add the SMA 
+
+The 200-day SMA is appproximately 10 months (200 business days, not including 
+holidays & weekends)
+```{r}
+plot(Cl(SPY))
+add_TA(SMA(Cl(SPY), n =200), col = "red")
+```
+
+# Chapter 2 - Boilerplate
+
+All strategies need three dates (YYYY-MM-DD)
+- initialization date
+- from date
+- to date
+
+Environment timezone
+`r Sys.setenv(TZ="UTC")`
+
+Currency
+Tell quanstrat which currency to use
+`r currency("USD")`
+
+Financial Data
+Via `getSymbols`
+
+Create the equity. This tells quanstrat to use this instrument for 
+simulation, rather than creating minimum buy sizes (as exist for futures). It 
+also sets the currency for the specific instrument.
+Via `stock()`
+
+Hierarchy
+- Account
+  - Portfolio
+    - Strategy
+```{r}
+portfolio.st <- strategy.st <- account.st <- "datacamp"
+```
+
+    
+tradesize - size of initial trade
+initeq - total initial equity
+tradesize should not be larger thatn initeq
+```{r}
+tradesize <- 100000
+initeq <- 100000
+initdate <- "2000-01-01"
+```
+
+
+Once a strategy is run, it cannot be re-run. It must be removed via `rm.strategy` 
+before running it again.
+
+```{r}
+rm.strat(strategy.st)
+```
+
+
+## Initialization process
+
+1. Initialize the portfolio involves given it the name, the equities that are part of the 
+portfolio, and the initializion date.
+
+2. Initialize the accounts
+
+3. Initialize Orders
+
+4. Initialize the strategy
+```{r}
+# initialize the portfolio
+initPortf(portfolio.st, symbols = "SPY", initDate = initdate, currency = "USD")
+
+# initialize the account
+initAcct(account.st, portfolios = portfolio.st, initDate = initdate, 
+         currency = "USD", initEq = initeq)
+
+# initialize the orders
+initOrders(portfolio.st, initDate = initdate)
+
+# store the strategy
+strategy(strategy.st, store = TRUE)
+```
+
+# Chapter 3 - Intro to Indicators
+
+Indicators always operate on the `mktdata` internal data set, which will be 
+updated with whatever instrument prices ultimately get passed in for backtesting.
+
+RSI - Relative Strength Indicators
+
+Create a standard 200-day SMA
+```{r sma200}
+# Add a 200-day simple moving average indicator to your strategy
+add.indicator(strategy = strategy.st, 
+              
+              # Add the SMA function
+              name = "SMA", 
+              
+              # Create a lookback period
+              arguments = list(x = quote(Cl(mktdata)), n = 200), 
+              
+              # Label your indicator SMA200
+              label = "SMA200")
+
+```
+
+Also create a faster (50-day) SMA. This combination of a smoother (laggier) and 
+more volitale (more responsive) indicators is common.
+
+```{r sma50}
+# Add a 50-day simple moving average indicator to your strategy
+add.indicator(strategy = strategy.st, 
+              
+              # Add the SMA function
+              name = "SMA", 
+              
+              # Create a lookback period
+              arguments = list(x = quote(Cl(mktdata)), n = 50), 
+              
+              # Label your indicator SMA200
+              label = "SMA50")
+
+```
+
+Create a 3-day RSI
+
+```{r rsi}
+# add an RSI 3 indicator to your strategy
+add.indicator(strategy = strategy.st, 
+              
+              # add an RSI function to your strategy
+              name = "RSI", 
+              
+              # use a lookback period of 3 days
+              arguments = list(price = quote(Cl(mktdata)), n = 3), 
+              
+              # label it RSI_3
+              label = "RSI_3")
+```
+
+using `applyIndicators` to verify that indicators are working correctly
+
+```{r}
+applyIndicators(strategy.st, SPY)
+```
+
+Creating custom indicator.
+
+Example of creating a custom function and using it to build an indicator
+```{r}
+# Write the RSI_avg function
+RSI_avg <- function(price, n1, n2) {
+  
+  # RSI 1 takes an input of the price and n1
+  rsi_1 <- RSI(price = price, n = n1)
+  
+  # RSI 2 takes an input of the price and n2
+  rsi_2 <- RSI(price = price, n = n2)
+  
+  # RSI_avg is the average of rsi_1 and rsi_2
+  RSI_avg <- (rsi_1 + rsi_2)/2
+  
+  # Your output of RSI_avg needs a column name of "RSI_avg"
+  colnames(RSI_avg) <- "RSI_avg"
+  return(RSI_avg)
+}
+
+# Add the RSI_avg function to your strategy using an n1 of 3 and an n2 of 4, and label it "RSI_3_4"
+add.indicator(strategy.st, name = "RSI_avg", arguments = list(price = quote(Cl(mktdata)), n1 = 3, n2 = 4), label = "RSI_3_4")
+```
+
+DVO - David Varadi Oscillator
+
+```{r dvo}
+# Declare the DVO function. The first argument is the high, low, and close of market data.
+DVO <- function(HLC, navg = 2, percentlookback = 126) {
+  
+  # Compute the ratio between closing prices to the average of high and low
+  ratio <- Cl(HLC)/((Hi(HLC) + Lo(HLC))/2)
+  
+  # Smooth out the ratio outputs using a moving average
+  avgratio <- SMA(ratio, n = navg)
+  
+  # Convert ratio into a 0-100 value using runPercentRank function
+  out <- runPercentRank(avgratio, n = percentlookback, exact.multiplier = 1) * 100
+  colnames(out) <- "DVO"
+  return(out)
+}
+```
+
+Apply the DVO
+```{r}
+# add the DVO indicator to your strategy
+add.indicator(strategy = strategy.st, name = "DVO", 
+              arguments = list(HLC = quote(HLC(mktdata)), navg = 2, percentlookback = 126),
+              label = "DVO_2_126")
+
+# use applyIndicators to test out your indicators
+test <- applyIndicators(strategy = strategy.st, mktdata = OHLC(SPY))
+
+# subset your data between Sep. 1 and Sep. 5 of 2013
+test_subset <- test["2013-09-01/2013-09-05"]
+```
+
+# Chapter 4 - Signals
+
+Signals are the interaction of market data with indicators. Events that 
+it may be time to buy/sell an asset.
+
+`add.signal` function takes:
+ - strategy name
+ - name of the function
+ - argument to the function
+ - label to the signal
+ 
+Similar to the `apply` family.
+
+Four types of signals:
+
+1. sigComparison - relationship between two indicators (usually used as a filter for other signals)
+2. sigCrossover - returns 1 on the first occurance (usually used more directly as a buy/sell signal)
+  Fires once and then not again
+3. sigThreshold - Compares range-bound indicator to a static quantity
+  a) `cross = TRUE` like sigCrossover
+  b) `cross = FALSE` like sigComparison
+4. sigFormula - Complicated custom formula
+
+comparison relationships
+
+- gt - Greater than
+- gte - Greater than or equal
+- lt - less than
+- lte - Less than or equal
+
+```{r sigComparison}
+# add a sigComparison which specifies that SMA50 must be greater than SMA200, call it longfilter
+add.signal(strategy.st, name = "sigComparison", 
+           
+           # we are interested in the relationship between the SMA50 and the SMA200
+           arguments = list(columns = c("SMA50", "SMA200"), 
+                            
+                            # particularly, we are interested when the SMA50 is greater than the SMA200
+                            relationship = "gt"),
+           
+           # label this signal longfilter
+           label = "longfilter")
+```
+
+```{r sigCrossover}
+# add a sigCrossover which specifies that the SMA50 is less than the SMA200 and label it filterexit
+add.signal(strategy.st, name = "sigCrossover",
+           
+           # we're interested in the relationship between the SMA50 and the SMA200
+           arguments = list(columns = c("SMA50", "SMA200"),
+                            
+                            # the relationship is that the SMA50 crosses under the SMA200
+                            relationship = "lt"),
+           
+           # label it filterexit
+           label = "filterexit")
+```
+
+```{r sigThreshold}
+# implement a sigThreshold which specifies that DVO_2_126 must be less than 20, label it longthreshold
+add.signal(strategy.st, name = "sigThreshold", 
+           
+           # use the DVO_2_126 column
+           arguments = list(column = "DVO_2_126", 
+                            
+                            # the threshold is 20
+                            threshold = 20, 
+                            
+                            # we want the oscillator to be under this value
+                            relationship = "lt", 
+                            
+                            # we're interested in every instance that the oscillator is less than 20
+                            cross = FALSE), 
+           
+           # label it longthreshold
+           label = "longthreshold")
+```
+
+```{r sigThreshold_w_cross}
+# add a sigThreshold signal to your strategy that specifies that DVO_2_126 must cross above 80 and label it thresholdexit
+add.signal(strategy.st, name = "sigThreshold", 
+           
+           # reference the column of DVO_2_126
+           arguments = list(column = "DVO_2_126", 
+                            
+                            # set a threshold of 80
+                            threshold = 80, 
+                            
+                            # the oscillator must be greater than 80
+                            relationship = "gt", 
+                            
+                            # we are interested only in the cross
+                            cross = TRUE), 
+           
+           # label it thresholdexit
+           label = "thresholdexit")
+```
+Creating a test data set
+
+```{r}
+# Create your dataset: test
+test_init <- applyIndicators(strategy.st, mktdata = OHLC(SPY))
+test <- applySignals(strategy = strategy.st, mktdata = test_init)
+```
+
+```{r sigFormula}
+# add a sigFormula signal to your code specifying that both longfilter and longthreshold must be TRUE, label it longentry
+add.signal(strategy.st, name = "sigFormula",
+           
+           # specify that longfilter and longthreshold must be TRUE
+           arguments = list(formula = "longfilter & longthreshold", 
+                            
+                            # specify that cross must be TRUE
+                            cross = TRUE),
+           
+           # label it longentry
+           label = "longentry")
+```
+
+
+# Chapter 5 - Rules
+
+Rules - function to create a transaction based upon a signal
+
+Two types
+
+- Enter rules - buying into a position
+- Exit rules - selling a position
+
+
+Orderqty (int or `all`)
+odertype (market, limit, other. Almost always market for common strategies)
+orderside (long or short) long for typical buys, unless you're shorting stocks
+
+replace (TRUE, if all other signals for this day canceled once this rule is triggers)
+prefer (when to place the trade, "Open" or "Close")
+
+```{r}
+# fill in the rule's type as exit
+add.rule(strategy.st, name = "ruleSignal", 
+         arguments = list(sigcol = "filterexit", sigval = TRUE, orderqty = "all", 
+                        ordertype = "market", orderside = "long", 
+                        replace = FALSE, prefer = "Open"), 
+         type = "exit")
+```
+
+```{r}
+# fill in the replace argument in add.rule()
+add.rule(strategy.st, name = "ruleSignal", 
+         arguments = list(sigcol = "thresholdexit", sigval = TRUE, orderqty = "all", 
+                        ordertype = "market", orderside = "long", 
+                        replace = FALSE, prefer = "Open"), 
+         type = "exit")
+```
+
+```{r}
+# create an entry rule of 1 share when all conditions line up to enter into a position
+add.rule(strategy.st, name = "ruleSignal", 
+         
+         # use the longentry column as the sigcol
+         arguments = list(sigcol = "longentry", 
+                        
+                        # set sigval to TRUE
+                        sigval = TRUE, 
+                        
+                        # set orderqty to 1
+                        orderqty = 1,
+                        
+                        # use a market type of order
+                        ordertype = "market",
+                        
+                        # take the long orderside
+                        orderside = "long",
+                        
+                        # do not replace other signals
+                        replace = FALSE, 
+                        
+                        # buy at the next day's opening price
+                        prefer = "Open"),
+         
+         # this is an enter type rule, not an exit
+         type = "enter")
+```
+
+```{r sizing_function}
+# add a rule that uses an osFUN to size an entry position
+add.rule(strategy = strategy.st, name = "ruleSignal",
+         arguments = list(sigcol = "longentry", sigval = TRUE, ordertype = "market",
+                          orderside = "long", replace = FALSE, prefer = "Open",
+                          
+                          # use the osFUN called osMaxDollar
+                          osFUN = osMaxDollar,
+                          
+                          # the tradeSize argument should be equal to tradesize (defined earlier)
+                          tradeSize = tradesize,
+                          
+                          # the maxSize argument should be equal to tradesize as well
+                          maxSize = tradesize),
+         type = "enter")
+
+```
+
+# Chapter 6 - Analyzing Your Strategy
+
+apply you strategy - `applyStrategy` based upon you strategy and
+Update your porfolio - `updatePortf`
+ - get the date range of the portfolio, subtracting out the initialDate
+   `daterange <- time(getPortfolio(portfolio.st)$summary)[-1]`
+Update the account
+ - `updateAcct` acct, daterange
+ - `updateEndEq` acct
+Get trade stats
+ - `tradeStates(Portfolios = portfolio.st)
+
+
+```{r}
+# use applyStrategy() to apply your strategy. Save this to out
+out <- applyStrategy(strategy = strategy.st, portfolios = portfolio.st, mktdata = SPY)
+
+# update your portfolio (portfolio.st)
+updatePortf(portfolio.st)
+daterange <- time(getPortfolio(portfolio.st)$summary)[-1]
+
+# update your account (account.st)
+updateAcct(account.st, daterange)
+updateEndEq(account.st)
+
+# what is the date of the last trade?
+"2015-12-23"
+```
+
+Show profit factor
+
+```{r}
+# Get the tradeStats for your portfolio
+tstats <- tradeStats(Portfolios = portfolio.st)
+
+# Print the profit factor
+tstats$Profit.Factor
+```
+
+## visualize positions
+
+```{r}
+chart.Posn(Portfolio = portfolio.st, Symbol = "SPY")
+```
+
+Sharpe ratio - ratio of reward to risk
+`PortfReturns(account.st)`

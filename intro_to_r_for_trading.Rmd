@@ -1,0 +1,248 @@
+---
+title: "Introduction to Quantstrat"
+output: html_notebook
+---
+
+Experimentation with `quantstrat` via the https://quantstrattrader.wordpress.com/ 
+blog.
+
+```{r setup}
+#install.packages("quantstrat", repos="https://r-forge.r-project.org")
+#devtools::install_github("ilyakipnis/IKTrading")
+#devtools::install_github("ilyakipnis/DSTrading")A
+
+library(quantstrat)
+library(IKTrading)
+#library(tidyverse)
+
+options("getSymbols.auto.assign" = FALSE)
+options("getSymbols.warning4.0" = FALSE)
+
+```
+
+# Getting and Working with Data
+
+We will work on the S&P 500 index.
+
+```{r get_stock_data}
+SPY <- getSymbols("SPY", from = "2007-01-01", to = "2017-01-01")
+#glimpse(dat)
+head(SPY)
+tail(SPY)
+```
+```{r}
+chart_Series(SPY)
+```
+
+`zoom_Chart` does work inside of notebooks, but we'll also use standard 
+`xts` subsetting in a few places for demo purposes.
+```{r zoom_2009}
+zoom_Chart("2009")
+#chart_Series(SPY["2009"])
+```
+Add Bolinger Bands
+```{r}
+add_BBands()
+```
+
+Zooming into a specific month
+```{r}
+chart_Series(SPY["2015-03"])
+```
+
+Calculate 200 day simple moving average (SMA, via the `TTR` package, a 
+dependency of the `quantstrat` package) on the close `Cl` price.
+
+```{r calculate_sma}
+sma <- SMA(Cl(SPY), n = 200)
+tail(sma)
+```
+
+Add the SMA to the chart.
+```{r}
+plot(add_TA(sma, on = 1))
+```
+
+Calculate the RSI
+```{r calculate_rsi}
+rsi <- RSI(price = Cl(SPY), n = 2)
+tail(rsi)
+```
+
+Add the RSI to the chart as well
+```{r}
+add_TA(rsi, on=1)
+```
+
+# Strategy Exploration
+
+Establish some basic parameters for our strategy.
+
+```{r strategy_parameters}
+currency('USD')  
+Sys.setenv(TZ = 'UTC')
+symbols <- "SPY"
+stock(symbols, currency = "USD", multiplier = 1)
+init_date <- "1990-01-01" # need to define a date that occurs before the earlist point in our data set
+tradeSize <- 10000
+initEq <- tradeSize*length(symbols)
+
+```
+
+Initialize the strategy placeholders.
+
+```{r strategy_boilerplate}
+strategy.st <- portfolio.st <- account.st <- "RSI_10_6"
+rm.strat(portfolio.st)
+rm.strat(strategy.st)
+# init portfolio
+initPortf(portfolio.st, symbols = symbols, initDate = init_date, 
+          currency = 'USD', initEq = initEq)
+# init accounts
+initAcct(account.st, portfolios = portfolio.st, initDate = init_date, 
+         currency = 'USD', initEq = initEq)
+# init orders
+initOrders(portfolio.st, initDate = init_date)
+# init strategy
+strategy(strategy.st, store = TRUE)
+```
+
+Parameter setup
+```{r parameters}
+#RSA params
+nRSI <- 2
+thresh1 <- 10
+thresh2 <- 6
+
+# SMA parameters
+nSMAexit = 5
+nSMAfilter <- 200
+
+#order sizing function (IKTrading::osDollarATR)
+period <- 10 # days
+pctATR <- 0.02 # notional trade size relative to risk
+maxPct <- 0.04 # 
+```
+
+## Setup Indicators
+```{r}
+#lagATR is from the IKTrading library
+#HLC gives the High-Low-Close
+add.indicator(strategy.st, name = "lagATR", 
+              arguments = list(HLC = quote(HLC(mktdata)), n = period),
+              label = "atrX")
+add.indicator(strategy.st, name = "RSI", 
+              arguments = list(price = quote(Cl(mktdata)), n = nRSI),
+              label="rsi")
+add.indicator(strategy.st, name = "SMA", 
+              arguments = list(x=quote(Cl(mktdata)), n=nSMAexit),
+              label="quickMA")
+add.indicator(strategy.st, name = "SMA", 
+              arguments = list(x=quote(Cl(mktdata)), n=nSMAfilter),
+              label="filterMA")
+```
+## Setup Signals
+
+```{r}
+add.signal(strategy.st, name = "sigComparison",
+           arguments = list(columns = c("Close", "filterMA"), relationship = "gt"),
+           label = "upTrend")
+
+#sigThreshold compares against a static quantity threshold
+add.signal(strategy.st, name = "sigThreshold",
+           arguments = list(column = "rsi", threshold = thresh1, relationship = "lt", 
+                            cross = FALSE),
+           label = "rsiThresh1")
+add.signal(strategy.st, name = "sigThreshold",
+           arguments = list(column = "rsi", threshold = thresh2, relationship = "lt", 
+                            cross = FALSE),
+           label = "rsiThresh2")
+
+#sigAND from IKTrading
+add.signal(strategy.st, name = "sigAND",
+           arguments = list(columns = c("rsiThresh1", "upTrend"), cross = TRUE),
+           label = "longEntry1")
+add.signal(strategy.st, name = "sigAND",
+           arguments = list(columns = c("rsiThresh2", "upTrend"), cross = TRUE),
+           label = "longEntry2")
+
+#sigCrossover, unlike sigComparison, only triggers when the relationship goes from FALSE to TRUE
+add.signal(strategy.st, name = "sigCrossover",
+           arguments = list(columns = c("Close", "quickMA"), relationship = "gt"),
+           label = "exitLongNormal")
+add.signal(strategy.st, name = "sigCrossover",
+           arguments = list(columns = c("Close", "filterMA"), relationship = "lt"),
+           label = "exitLongFilter")
+```
+
+## Setup Rules
+
+maxPCtATR | maximum position size
+osFUN     | order size function (exclusive with `orderqty`)
+
+```{r}
+
+add.rule(strategy.st, name="ruleSignal",
+         arguments=list(sigcol="longEntry1",
+                        sigval=TRUE,
+                        ordertype="market",
+                        orderside="long",
+                        replace=FALSE,
+                        prefer="Open",
+                        osFUN=osDollarATR,
+                        tradeSize=tradeSize,
+                        pctATR=pctATR,
+                        maxPctATR=pctATR,
+                        atrMod="X"),
+         type="enter", path.dep=TRUE, label="enterLong1")
+add.rule(strategy.st, name="ruleSignal",
+         arguments=list(sigcol="longEntry2",
+                        sigval=TRUE,
+                        ordertype="market",
+                        orderside="long",
+                        replace=FALSE,
+                        prefer="Open",
+                        osFUN=osDollarATR,
+                        tradeSize=tradeSize,
+                        pctATR=pctATR,
+                        maxPctATR=maxPct,
+                        atrMod="X"),
+         type="enter", path.dep=TRUE, label="enterLong2")
+
+#exit rules
+add.rule(strategy.st, name="ruleSignal",
+         arguments=list(sigcol="exitLongNormal",
+                        sigval=TRUE,
+                        orderqty="all",
+                        ordertype="market",
+                        orderside="long",
+                        replace=FALSE,
+                        prefer="Open"),
+         type="exit", path.dep=TRUE, label="normalExitLong")
+add.rule(strategy.st, name="ruleSignal",
+         arguments=list(sigcol="exitLongFilter",
+                        sigval=TRUE,
+                        orderqty="all",
+                        ordertype="market",
+                        orderside="long",
+                        replace=FALSE,
+                        prefer="Open"),
+         type="exit", path.dep=TRUE, label="filterExitLong")
+```
+## Run Strategy
+```{r}
+t1 <- Sys.time()
+out <- applyStrategy(strategy=strategy.st, portfolios = portfolio.st, mktdata = SPY)
+t2 <- Sys.time()
+print(t2 - t1)
+```
+
+Set up analytics
+```{r}
+updatePortf(portfolio.st)
+dateRange <- time(getPortfolio(portfolio.st)$summary)[-1]
+updateAcct(account.st, dateRange)
+updateEndEq(account.st)
+
+```
+

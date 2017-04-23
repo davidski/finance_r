@@ -9,6 +9,7 @@ Try executing this chunk by clicking the *Run* button within the chunk or by pla
 
 ```{r setup}
 library(quantmod)
+library(PerformanceAnalytics)
 ```
 
 # Chpater 1- Portfolio Weights & Returns
@@ -75,4 +76,137 @@ returns <- (fin_values - in_values)/in_values
 preturns <- sum(returns*weights)
 ```
 
+## Calculating portfolio returns
+
+```{r}
+getSymbols(c("AAPL", "MSFT"), auto.assign = TRUE)
+prices <- merge.xts(Ad(AAPL), Ad(MSFT))
+head(prices)
+
+# Create the variable returns using Return.calculate()  
+returns <- Return.calculate(prices)
+  
+# Print the first six rows of returns. Note that the first observation is NA, because there is no prior price.
+head(returns, 6)
+  
+# Remove the first row of returns
+returns <- returns[-1, ]
+```
+
+Rebalancing portfolios
+
+```{r rebalance}
+# Create the weights
+eq_weights <- c(.5, .5)
+
+# Create a portfolio using buy and hold
+pf_bh <- Return.portfolio(R = returns, weights = eq_weights)
+
+# Create a portfolio rebalancing monthly 
+pf_rebal <- Return.portfolio(R= returns, rebalance_on = "months")
+
+# Plot the time-series
+par(mfrow = c(2, 1), mar = c(2, 4, 2, 2))
+plot.zoo(pf_bh)
+plot.zoo(pf_rebal)
+```
+
+Use `verbose = TRUE` to show more stats on weights as portfolios are rebalanced.
+
+```{r}
+# Create the weights
+eq_weights <- c(0.5, 0.5)
+
+# Create a portfolio using buy and hold
+pf_bh <- Return.portfolio(returns, weights = eq_weights, verbose = TRUE )
+
+# Create a portfolio that rebalances monthly
+pf_rebal <- Return.portfolio(returns, weights = eq_weights, rebalance_on = "months", verbose = TRUE )
+
+# Create eop_weight_bh
+eop_weight_bh <- pf_bh$EOP.Weight
+
+# Create eop_weight_rebal
+eop_weight_rebal <- pf_rebal$EOP.Weight
+
+# Plot end of period weights
+par(mfrow = c(2, 1), mar=c(2, 4, 2, 2))
+plot.zoo(eop_weight_bh$AAPL)
+plot.zoo(eop_weight_rebal$AAPL)
+```
+
+# Chapter 2 - Analyzing performance
+
+```{r sp500_monthly}
+sp500 <- getSymbols("SPY", auto.assign = FALSE)
+# Convert the daily frequency of sp500 to monthly frequency: sp500_monthly
+sp500_monthly <- to.monthly(sp500)
+
+# Print the first six rows of sp500_monthly
+head(sp500_monthly, 6)
+
+# Create sp500_returns using Return.calculate using the closing prices
+sp500_returns <- Return.calculate(sp500_monthly[, 4])
+
+# Time series plot
+plot.zoo(sp500_returns)
+
+# Produce the year x month table
+table.CalendarReturns(sp500_returns)
+```
+
+Calculate the mean and volatility of returns
+```{r}
+# Compute the mean monthly returns
+mean(sp500_returns, na.rm = TRUE)
+
+
+
+# Compute the geometric mean of monthly returns
+mean.geometric(sp500_returns)
+
+# Compute the standard deviation
+sd(sp500_returns, na.rm = TRUE)
+
+```
+
+Calculating the sharpe ratio
+
+```{r}
+# Compute the annualized risk free rate
+rf <- getSymbols("DGS10",src="FRED", auto.assign=FALSE) %>% to.monthly() %>% Cl
+annualized_rf <- (1 + rf)^12 - 1
+
+# Plot the annualized risk free rate
+plot.zoo(annualized_rf)
+
+
+# Compute the series of excess portfolio returns 
+sp500_excess <- sp500_returns - rf
+
+# Compare the mean
+mean(sp500_returns, na.rm = TRUE)
+mean(sp500_excess, na.rm = TRUE)
+
+# Compute the Sharpe ratio
+sp500_sharpe <- mean(sp500_excess, na.rm = TRUE) / sd(sp500_returns, na.rm = TRUE)
+sp500_sharpe
+```
+
+Annualized returns via the PerformanceAnalytics library
+```{r}
+# Compute the annualized mean
+Return.annualized(sp500_returns)
+
+
+# Compute the annualized standard deviation
+StdDev.annualized(sp500_returns)
+
+# Compute the annualized Sharpe ratio: ann_sharpe
+ann_sharpe <- Return.annualized(sp500_returns) / StdDev.annualized(sp500_returns)
+
+# Compute all of the above at once using table.AnnualizedReturns()
+table.AnnualizedReturns(sp500_returns)
+
+```
 

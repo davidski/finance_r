@@ -3,6 +3,11 @@ title: "Bond Valuation"
 output: html_notebook
 ---
 
+```{r setup}
+# Load quantmod package
+library(quantmod)
+```
+
 # Chapter 1
 p - par value
 r - coupon rate
@@ -13,18 +18,124 @@ Generate a bond valuation function
 
 
 ```{r}
-bonprc <- function(p, r, ttm, y){
-# cash flows are the coupon payments, plus the principal + coupon payment
-cf <- c(rep(p * r, ttm - 1), p * (1 + r))
-cf <- data.frame(cf)
-#convert the periods to the t column
-cf$t <- as.numeric(rownames(cf))
-cf$pv_factor <- 1 / (1 + y) ^ cf$t
-cf$pv <- cf$cf * cf$pv_factor
-sum(cf$pv)
+bondprc <- function(p, r, ttm, y){
+  # cash flows are the coupon payments, plus the principal + coupon payment
+  cf <- c(rep(p * r, ttm - 1), p * (1 + r))
+  cf <- data.frame(cf)
+  #convert the periods to the t column
+  cf$t <- as.numeric(rownames(cf))
+  cf$pv_factor <- 1 / (1 + y) ^ cf$t
+  cf$pv <- cf$cf * cf$pv_factor
+  sum(cf$pv)
 }
 ```
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+# Chapter 2
 
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+```{r}
+# Load quantmod package
+
+
+# Obtain Treasury yield data
+t10yr <- getSymbols(Symbols = "DGS10", src = "FRED", auto.assign = FALSE)
+
+# Subset data
+t10yr <-t10yr["2006-01/2016-09"]
+
+# Plot yields
+plot(x = index(t10yr),
+     y = t10yr$DGS10,
+     xlab = "Date",
+     ylab = "Yield (%)",
+     type = "l",
+     col = "red",
+     main = "10-Year US Treasury Yields")
+
+```
+
+Using `uniroot` to find the function root (solving the function)
+```{r}
+# Create cash flow vector
+cf <- c(-95.79, 5, 5, 5, 5, 105)
+
+# Create bond valuation function
+bval <- function(i, cf,
+     t=seq(along = cf))
+     sum(cf / (1 + i)^t)
+
+# Create ytm() function using uniroot
+ytm <- function(cf) {
+    uniroot(bval, c(0, 1), cf = cf)$root
+}
+
+# Use ytm() function to find yield
+ytm(cf)
+
+
+```
+
+
+```{r}
+# Examine first and last six elements in spread
+head(spread)
+tail(spread)
+
+# Calculate spread$diff
+spread$diff <- (spread$baa - spread$aaa) * 100
+
+# Plot spread
+plot(x = spread$date,
+     y = spread$diff,
+     type = "l",
+     xlab = "Date",
+     ylab = "Spread (bps)",
+     col = "red",
+     main = "Aaa - Baa Spread")
+
+```
+
+# Chapter 3 - Duration and Convexity
+
+Estimating duration
+
+```{r}
+# Calculate bond price today
+px <- bondprc(p = 100, r = .1, ttm = 20, y = .1)
+px
+
+# Calculate bond price if yields increase by 1%
+px_up <- bondprc(p = 100, r = .1, ttm = 20, y = .11)
+px_up
+
+# Calculate bond price if yields decrease by 1%
+px_down <- bondprc(p = 100, r = .1, ttm = 20, y = .09)
+px_down
+
+# Calculate approximate duration
+duration <- (px_down - px_up) / (2 * px * 0.01)
+duration
+```
+
+Applying duraton to calculate estimate price change of a decrease in yeild of 
+1%
+
+```{r}
+px <- 100
+# Estimate percentage change
+duration_pct_change <- -duration * -0.01
+duration_pct_change
+
+# Estimate dollar change
+duration_dollar_change <- duration_pct_change * px
+duration_dollar_change
+```
+
+
+Calculating PV01
+```{r}
+# Calculate the PV01
+before <- bondprc(100, .1, 20, .1)
+after <- bondprc(100, .1, 20, .1001)
+abs(before-after)
+```
+

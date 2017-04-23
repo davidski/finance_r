@@ -1,0 +1,78 @@
+---
+title: "Intro to Portfolio Analysis"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r setup}
+library(quantmod)
+```
+
+# Chpater 1- Portfolio Weights & Returns
+
+Coke vs. Pepsi performance
+
+```{r}
+getSymbols(c("KO", "PEP"), auto.assign = TRUE)
+# Define ko_pep 
+ko_pep <- Cl(KO) / Cl(PEP)
+
+# Make a time series plot of
+plot(ko_pep)
+  
+# Add as a reference, a horizontal line at 1
+abline(h=1)
+```
+
+Calculating basic portfolio weights
+```{r}
+# Define the vector values
+values <- c(4000, 4000, 2000)
+
+
+# Define the vector weights
+weights <- values / sum(values)
+
+# Print the resulting weights
+weights
+```
+
+Basic Market Cap Weighting
+
+```{r}
+# Define marketcaps
+ marketcaps <- c(5, 8, 9, 20, 25, 100, 100, 500, 700, 2000)
+  
+# Compute the weights
+weights <- marketcaps / sum(marketcaps)
+  
+# Inspect summary statistics
+summary(weights)
+  
+# Create a barplot of weights
+barplot(weights)
+```
+
+Calculated weighted portfolio returns
+ 
+```{r}
+# Vector of initial value of the assets
+in_values <- c(1000, 5000, 2000)
+  
+# Vector of final values of the assets
+fin_values <- c(1100, 4500, 3000)
+
+# Weights as the proportion of total value invested in each assets
+weights <- in_values/sum(in_values)
+
+# Vector of simple returns of the assets 
+returns <- (fin_values - in_values)/in_values
+  
+# Compute portfolio return using the portfolio return formula
+preturns <- sum(returns*weights)
+```
+
+

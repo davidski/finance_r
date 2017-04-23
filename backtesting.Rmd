@@ -1,0 +1,36 @@
+---
+title: "Portfolio Backtesting"
+output: html_notebook
+---
+
+
+```{r setup}
+library(PerformanceAnalytics)
+```
+
+Get prices for our target funds
+```{r}
+symbols <- c("VFIAX", "VMAX", "VSMAX", "VBTLX", "VTIAX")
+getSymbols(symbols)
+weights <- c(.36, .06, .06, .4, .12)
+```
+
+Backtest
+```{r}
+portfolio_prices <- do.call(merge, lapply(symbols, function(x) Ad(get(x))))
+returns <- Return.calculate(portfolio_prices)
+pf_returns <- Return.portfolio(R = returns, weights = weights, rebalance_on = "quarters")
+```
+```{r}
+plot(pf_returns)
+table.CalendarReturns(pf_returns)
+```
+
+```{r}
+mean.geometric(pf_returns)
+SharpeRatio.annualized(pf_returns, Rf = .03/12)
+```
+```{r}
+chart.RollingPerformance(R = pf_returns, width = 12, FUN = "StdDev.annualized")
+```
+

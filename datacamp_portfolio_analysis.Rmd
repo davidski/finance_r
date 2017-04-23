@@ -10,6 +10,7 @@ Try executing this chunk by clicking the *Run* button within the chunk or by pla
 ```{r setup}
 library(quantmod)
 library(PerformanceAnalytics)
+library(dplyr)
 ```
 
 # Chpater 1- Portfolio Weights & Returns
@@ -210,3 +211,92 @@ table.AnnualizedReturns(sp500_returns)
 
 ```
 
+Rolling annualized means and volatility
+```{r rolling}
+# Calculate the mean, volatility, and sharpe ratio of sp500_returns
+returns_ann <- Return.annualized(sp500_returns, scale = 12)
+sd_ann <- StdDev.annualized(sp500_returns)
+sharpe_ann <- SharpeRatio.annualized(sp500_returns, rf)
+
+
+
+# Plotting the 12-month rolling annualized mean
+chart.RollingPerformance(R = sp500_returns, width = 12, FUN = "Return.annualized", scale=12)
+abline(h = returns_ann)
+
+# Plotting the 12-month rolling annualized standard deviation
+chart.RollingPerformance(R = sp500_returns, width = 12, FUN = "StdDev.annualized")
+abline(h = sd_ann)
+
+
+# Plotting the 12-month rolling annualized Sharpe ratio
+chart.RollingPerformance(R = sp500_returns, width = 12, FUN = "SharpeRatio.annualized", Rf = rf)
+abline(h = sharpe_ann)
+```
+
+Subsetting data
+
+Alternatively, the window function could be replaced with a `sp500_returns["2008"]` 
+call.
+
+```{r}
+# Fill in window for 2008
+sp500_2008 <- window(sp500_returns, start = "2008-01-01", end = "2008-12-31")
+
+# Create window for 2014
+sp500_2014 <- window(sp500_returns, start = "2014-01-01", end = "2014-12-31")
+
+# Plotting settings
+par(mfrow = c(1, 2) , mar=c(3, 2, 2, 2))
+names(sp500_2008) <- "sp500_2008"
+names(sp500_2014) <- "sp500_2014"
+
+# Plot histogram of 2008
+chart.Histogram(sp500_2008, methods=c("add.density", "add.normal"))
+
+# Plot histogram of 2014
+chart.Histogram(sp500_2014, methods=c("add.density", "add.normal"))
+
+```
+
+Detecting non-normality
+```{r skew_and_kurtosis}
+#  Compute the skewness 
+skewness(sp500_daily)
+skewness(sp500_monthly)
+
+  
+
+# Compute the excess kurtois 
+kurtosis(sp500_daily)
+kurtosis(sp500_monthly)
+```
+
+Calculating downside risk meausres
+```{r downside_risk}
+# Calculate the SemiDeviation
+SemiDeviation(sp500_monthly)
+
+# Calculate the value at risk
+VaR(sp500_monthly, p=0.025)
+VaR(sp500_monthly, p=0.05)
+
+
+
+# Calculate the expected shortfall
+ES(sp500_monthly, p=0.025)
+ES(sp500_monthly, p=0.05)
+
+
+```
+
+Exploring drowdowns due to buying high and selling low
+```{r}
+# Table of drawdowns
+table.Drawdowns(sp500_monthly)
+
+# Plot of drawdowns
+chart.Drawdown(sp500_monthly)
+```
+
+# Chapter 3 - Performance Drivers

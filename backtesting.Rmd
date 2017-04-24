@@ -5,32 +5,57 @@ output: html_notebook
 
 
 ```{r setup}
-library(PerformanceAnalytics)
+suppressPackageStartupMessages(library(PerformanceAnalytics))
+options("GetSymbols.warnings4.0" = FALSE)
+```
+
+Define the symbols in our portfolio, and their respective weightings.
+
+```{r define_portfolio}
+symbols <- c("VFIAX", "VMAX", "VSMAX", "VBTLX", "VTIAX")
+weights <- c(.36, .06, .06, .4, .12)
 ```
 
 Get prices for our target funds
-```{r}
-symbols <- c("VFIAX", "VMAX", "VSMAX", "VBTLX", "VTIAX")
+```{r fetch_data}
 getSymbols(symbols)
-weights <- c(.36, .06, .06, .4, .12)
 ```
 
 Backtest
 ```{r}
+# put the price data adjusted prices into a merged xts object
 portfolio_prices <- do.call(merge, lapply(symbols, function(x) Ad(get(x))))
+# calculate returns
 returns <- Return.calculate(portfolio_prices)
-pf_returns <- Return.portfolio(R = returns, weights = weights, rebalance_on = "quarters")
+# calculate weighted returns, with rebalancing
+pf_returns <- Return.portfolio(R = returns, weights = weights, 
+                               rebalance_on = "quarters")
 ```
 ```{r}
 plot(pf_returns)
 table.CalendarReturns(pf_returns)
+table.AnnualizedReturns(pf_returns)
 ```
 
 ```{r}
 mean.geometric(pf_returns)
-SharpeRatio.annualized(pf_returns, Rf = .03/12)
+SharpeRatio.annualized(pf_returns, Rf = 0)
 ```
+
+Plot the variance (risk) of the portfolio as a 12 month rolling annualized 
+metric.
+
 ```{r}
 chart.RollingPerformance(R = pf_returns, width = 12, FUN = "StdDev.annualized")
+```
+
+```{r}
+PerformanceAnalytics::charts.PerformanceSummary(pf_returns)
+```
+
+## Downside risk measures
+```{r}
+SemiDeviation(pf_returns)
+ES(pf_returns, p = 0.05)
 ```
 

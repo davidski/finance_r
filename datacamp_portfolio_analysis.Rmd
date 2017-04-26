@@ -414,3 +414,205 @@ weights_percrisk
 
 ```
 
+# Chapter 4 - Portfolio Optimization
+
+```{r}
+DIJA <- getSymbols("DJIA", auto.assign = FALSE)
+head(DIJA)
+str(DIJA)
+class(DIJA)
+```
+```{r}
+# Verify the class of returns 
+class(returns)
+
+# Investigate the dimensions of returns
+dim(returns)
+
+# Create a vector of row means
+ew_preturns <- rowMeans(returns)
+
+# Cast the numeric vector back to an xts object
+ew_preturns <- xts(ew_preturns, order.by = time(returns))
+
+# Plot ew_preturns
+plot.zoo(ew_preturns)
+
+```
+
+Finding the mean-variance efficient portfolio via the `tseries` library.
+
+```{r}
+# Load tseries
+library(tseries)
+
+# Create an optimized portfolio of returns
+opt <- portfolio.optim(returns)
+
+# Create pf_weights
+pf_weights <- opt$pw
+
+# Assign asset names
+names(pf_weights) <- colnames(returns)
+
+# Select optimum weights opt_weights
+opt_weights <- pf_weights[pf_weights >= 0.01]
+
+# Barplot of opt_weights
+barplot(opt_weights)
+
+# Print expected portfolio return and volatility
+opt$pm
+opt$ps
+ 
+
+```
+
+Using additional argument to `tseries::portfolio.optim`, we can 
+specify the target return of the optimized portfolio. Variances will, 
+naturally, be higher for portfolios with required expected returns that 
+are larger.
+
+```{r}
+# Create portfolio with target return of average returns 
+pf_mean <- portfolio.optim(returns, pm = mean(returns))
+
+# Create portfolio with target return 10% greater than average returns
+pf_10plus <- portfolio.optim(returns, pm = 1.1 * mean(returns))
+
+# Print the standard deviations of both portfolios
+pf_mean$ps
+pf_10plus$ps
+
+
+# Calculate the proportion increase in standard deviation
+(pf_10plus$ps - pf_mean$ps) / (pf_mean$ps)
+
+```
+
+## Imposing weight constraints
+
+```{r weight_constriaints}
+# Create vectors of maximum weights
+max_weights1 <- rep(1, ncol(returns))
+max_weights2 <- rep(.1, ncol(returns))
+max_weights3 <- rep(.05, ncol(returns))
+
+# Create an optimum portfolio with max weights of 100%
+opt1 <- portfolio.optim(returns, reshigh = max_weights1)
+
+# Create an optimum portfolio with max weights of 10%
+opt2 <- portfolio.optim(returns, reshigh = max_weights2)
+
+# Create an optimum portfolio with max weights of 5%
+opt3 <- portfolio.optim(returns, reshigh = max_weights3)
+
+# Calculate how many assets have a weight that is greater than 1% for each portfolio
+sum(opt1$pw > .01)
+sum(opt2$pw > .01)
+sum(opt3$pw > .01)
+
+# Print portfolio volatilites 
+opt1$ps
+opt2$ps
+opt3$ps
+
+
+```
+
+## Grid search of efficient frontier along target returns
+
+Generating a range of returns between the risk-free rate at the maximum 
+mean return of any single stock, calculate different portfolios.
+
+Do a grid search
+```{r}
+# Calculate each stocks mean returns
+stockmu <- colMeans(returns)
+
+# Create a grid of target values
+grid <- seq(from = .01, to = max(stockmu), length.out = 50)
+
+# Create empty vectors to store means and deviations
+vpm <- vpsd <- rep(NA, length(grid))
+
+# Create an empty matrix to store weights
+mweights <- matrix(NA, 50, 30)
+
+# Create your for loop
+for(i in 1:length(grid)) {
+  opt <- portfolio.optim(x = returns, pm = grid[i])
+  vpm[i] <- opt$pm
+  vpsd[i] <- opt$ps
+  mweights[i, ] <- opt$pw
+}
+
+```
+## Minimum Variance and Maximum Sharpe ratio portfolios
+
+```{r}
+# Create weights_minvar as the portfolio with the least risk
+weights_minvar <- mweights[vpsd == min(vpsd), ]
+
+# Calculate the Sharpe ratio
+vsr <- (vpm - .0075) / vpsd
+
+# Create weights_max_sr as the portfolio with the maximum Sharpe ratio
+weights_max_sr <- mweights[vsr == max(vsr)]
+
+# Create barplot of weights_minvar and weights_max_sr
+par(mfrow = c(2, 1), mar = c(3, 2, 2, 1))
+barplot(weights_minvar[weights_minvar > 0.01])
+barplot(weights_max_sr[weights_max_sr > 0.01])
+ 
+```
+
+## In-Sample vs Out-Sample estimation
+
+Use the `window` function to subset two differnt time periods from the 
+returns. Generate optimal protfolios and display their respective weights. 
+If they were equal (which they are not) you'd get a 45 degree angle.
+
+```{r}
+# Create returns_estim 
+returns_estim <- window(returns, start = "1991-01-01", end = "2003-12-31")
+
+# Create returns_eval
+returns_eval <- window(returns, start = "2004-01-01", end = "2015-12-31")
+
+# Create vector of max weights
+max_weights <- rep(.1, ncol(returns))
+
+# Create portfolio with estimation sample 
+pf_estim <- portfolio.optim(returns_estim, reshigh = max_weights)
+
+# Create portfolio with evaluation sample
+pf_eval <- portfolio.optim(returns_eval, reshigh = max_weights)
+
+# Create a scatter plot
+plot(pf_estim$pw, pf_eval$pw)
+abline(h = 0, b = 1, lty = 3)
+```
+
+Out-of Sample Performance estimation
+
+Evaluating optimal protfolio performance for both the estimated and evaluation 
+windows using the same weights (which you should **not** do) shows 
+very different performance characteristics.
+
+```{r}
+# Create returns_pf_estim
+returns_pf_estim <- Return.portfolio(returns_estim, pf_estim$pw, rebalance_on = "months")
+
+
+# Create returns_pf_eval
+# use of pf_estim$pw is the problem here
+returns_pf_eval <- Return.portfolio(returns_eval, pf_estim$pw, rebalance_on = "months")
+
+# Print a table for your estimation portfolio
+table.AnnualizedReturns(returns_pf_estim)
+
+# Print a table for your evaluation portfolio
+table.AnnualizedReturns(returns_pf_eval) 
+```
+

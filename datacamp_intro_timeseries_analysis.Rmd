@@ -485,7 +485,377 @@ plot.ts(cbind(white_noise, random_walk, wn_drift, rw_drift))
 ```
 
 # Chapter 3 - Correlation Analysis
+Creating log returns of the European stock prices
+```{r}
+# Plot eu_stocks
+plot(eu_stocks)
+
+# Use this code to convert prices to returns
+returns <- eu_stocks[-1,] / eu_stocks[-1860,] - 1
+
+# Convert returns to ts
+returns <- ts(returns, start = c(1991, 130), frequency = 260)
+
+# Plot returns
+plot(returns)
+
+# Use this code to convert prices to log returns
+logreturns <- diff(log(eu_stocks))
+
+# Plot logreturns
+plot(logreturns)
+
+```
+
+Generating var, sd, and qqnorm plots of EU stock returns
+`eu_percentreturns` is a pregenerated time series of percentage returns.
+
+```{r}
+# Generate means from eu_percentreturns
+colMeans(eu_percentreturns)
+
+# Use apply to calculate sample variance from eu_percentreturns
+apply(eu_percentreturns, MARGIN = 2, FUN = var)
+
+# Use apply to calculate standard deviation from eu_percentreturns
+apply(eu_percentreturns, MARGIN = 2, FUN = sd)
+
+
+# Display a histogram of percent returns for each index
+par(mfrow = c(2,2))
+apply(eu_percentreturns, MARGIN = 2, FUN = hist, main = "", xlab = "Percentage Return")
+
+# Display normal quantile plots of percent returns for each index
+par(mfrow = c(2,2))
+apply(eu_percentreturns, MARGIN = 2, FUN = qqnorm, main = "")
+qqline(eu_percentreturns)
+
+```
+
+Plotting pairs of adata
+```{r}
+# Make a scatterplot of DAX and FTSE
+plot(DAX, FTSE)
+
+# Make a scatterplot matrix of eu_stocks
+pairs(eu_stocks)
+
+# Convert eu_stocks to log returns
+logreturns <- diff(log(eu_stocks))
+
+# Plot logreturns
+plot(logreturns)
+
+# Make a scatterplot matrix of logreturns
+pairs(logreturns)
+
+```
+
+Covariance and correlationi
+```{r}
+# Use cov() with DAX_logreturns and FTSE_logreturns
+cov(DAX_logreturns, FTSE_logreturns)
+
+# Use cov() with logreturns
+cov(logreturns)
+
+# Use cor() with DAX_logreturns and FTSE_logreturns
+cor(DAX_logreturns, FTSE_logreturns)
+
+# Use cor() with logreturns
+cor(logreturns)
+
+```
+
+Calculating autocorrelations
+```{r}
+x <- structure(c(2.06554378999052, 1.29963802747643, 0.0335779991586895, 
+-0.342580650531909, 0.232561264239081, 0.46812007757113, 4.34111562210087, 
+2.82007636228017, 2.90799984071324, 2.33495060661069, 1.15989953753479, 
+0.820086588740494, -0.243389267211544, -0.0335590712563976, -1.53548215546505, 
+-0.693637973739278, -1.41731647913027, -0.766231785942881, 0.835360597257352, 
+0.0439534524450661, 1.07447505996982, 1.5020036027448, -0.212386088917419, 
+0.329965209904814, -0.750334696700575, -0.105220383198473, 0.204719175021121, 
+-0.171705954006398, 0.871813778112284, 1.47213721162498, 0.841125913637882, 
+0.964301566136786, 0.668290270984329, -0.257526914755386, 0.0819391631343625, 
+-1.46057000075104, -1.26726829570465, -2.19329185949954, -2.21008902344996, 
+0.423389452815624, -1.01513892966255, -1.54446228520407, -0.725240364402779, 
+0.703523784166033, -0.361084556007819, -0.77422092427256, -0.500236026772146, 
+1.31369378401712, 1.15621723070589, 0.68782374979697, -0.794751834644245, 
+0.325633249568306, 2.0095555559387, 1.70614292642194, 0.999106399555225, 
+0.689327119331469, 0.657642591549493, 1.51403467336298, 0.858064132912175, 
+1.96951272989531, 2.98268339457276, 3.01781321858016, 1.30009670720816, 
+0.711402245361869, 0.40782908014827, -0.534298043336185, -0.211472510177074, 
+1.72814428234011, -0.755416648231175, -1.34178776534351, -1.72317007489008, 
+-2.78147841278781, -1.72572506879694, -3.49466070731688, -2.41789448795634, 
+-0.137442480792043, -0.158053099447877, -0.278653567565077, -0.974934997318935, 
+-1.52666608326988, -1.04093145865982, -1.26059747870986, -1.44067011754422, 
+-1.23902633066549, -0.446681739672754, 1.12562870363429, 3.25518487757103, 
+1.13570548962271, 0.989924110291071, 0.382442689493209, 2.71124649038012, 
+2.42216864579738, 1.78509980647879, -1.03092108862379, -1.06607323110348, 
+-2.63465306008288, -2.66808168921168, -1.3041139901592, -1.04269885346643, 
+0.402152604308987, -0.489282505055282, -0.493814702173949, -1.08457733222616, 
+-0.274569450436422, -1.84390880966614, -2.09907628897715, -1.88923578155269, 
+-1.84534262698994, -0.338121587755231, -1.20911695064133, -0.501577007092149, 
+-0.582987341692286, -1.6657587113247, -1.41327839377678, -2.55380295772017, 
+-0.868952900274749, -2.16915011833288, -2.60202618436534, -2.05678158944641, 
+-0.876541096217024, 1.32919650125563, 1.07620973692969, -0.964326975837399, 
+-1.8148002739182, -2.05757607832246, -2.34353352829789, -0.0146716297323564, 
+0.773214544894368, 0.0310621391253578, 1.16999559355939, 2.677322934875, 
+4.5776173640027, 4.90582957736755, 4.13300370509818, 4.0439809933119, 
+1.350813328708, 0.614290430972183, 1.42969022855235, 0.792311539558566, 
+1.34178061484686, 2.22016550780845, 2.8250228986348, 2.43279283228673, 
+1.89023417675106, 0.468774016196125, -1.30680558499926, -1.45910587790943, 
+0.211693298842279, 1.10203353866499, 1.42360646147849), .Tsp = c(1, 
+150, 1), class = "ts")
+# number of periods in time series predfined as 150
+n <- 150
+
+# Define x_t0 as x[-1]
+x_t0 <- x[-1]
+
+# Define x_t1 as x[-n]
+x_t1 <- x[-n]
+
+# Confirm that x_t0 and x_t1 are (x[t], x[t-1]) pairs  
+head(cbind(x_t0, x_t1))
+  
+# Plot x_t0 and x_t1
+plot(x_t0, x_t1)
+
+# View the correlation between x_t0 and x_t1
+cor(x_t0, x_t1)
+
+# Use acf with x
+acf(x, lag.max = 1, plot = FALSE)
+
+# Confirm that difference factor is (n-1)/n
+cor(x_t1, x_t0) * (n-1)/n
+
+```
+Using the ACF function
+```{r}
+# Generate ACF estimates for x up to lag-10
+acf(x, lag.max = 10, plot = FALSE)
+
+# Type the ACF estimate at lag-10 
+0.100
+
+# Type the ACF estimate at lag-5
+0.198
+
+```
+
+Visualizing ACF
+```{r}
+# View the ACF of x
+acf(x)
+
+# View the ACF of y
+acf(y)
+
+# View the ACF of z
+acf(z)
+
+```
 
 # Chapter 4 - Autoregression
 
-# Chapter 4 - Simple Moving Average
+Simuating autoregressive models
+```{r}
+
+set.seed(42)
+
+
+# Simulate an AR model with 0.5 slope
+x <- arima.sim(model = list(ar=0.5), n =100)
+
+# Simulate an AR model with 0.9 slope
+y <- arima.sim(model = list(ar=0.9), n =100)
+
+# Simulate an AR model with -0.75 slope
+z <- arima.sim(model = list(ar=-0.75), n =100)
+
+# Plot your simulated data
+plot.ts(cbind(x, y, z))
+
+```
+
+Estimate the autocorrelation function (ACF) for autoregression
+
+```{r}
+# Calculate the ACF for x
+acf(x)
+
+# Calculate the ACF for y
+acf(y)
+
+# Calculate the ACF for z
+acf(z)
+
+```
+
+Compare RW and AR models
+```{r}
+# Simulate and plot AR model with slope 0.9 
+x <- arima.sim(model = list(ar=0.9), n = 200)
+ts.plot(x)
+acf(x)
+
+# Simulate and plot AR model with slope 0.98
+y <- arima.sim(model = list(ar=0.98), n = 200)
+ts.plot(y)
+acf(y)
+
+# Simulate and plot RW model
+z <- arima.sim(model = list(order = c(0, 1, 0)), n = 200)
+ts.plot(z)
+acf(z)
+
+```
+
+Estimate the AR model
+```{r}
+# Fit the AR model to x
+arima(x, order = c(1, 0, 0))
+
+# Copy and paste the slope (ar1) estimate
+0.8575
+
+# Copy and paste the slope mean (intercept) estimate
+-0.0948
+
+# Copy and paste the innovation variance (sigma^2) estimate
+1.022
+
+# Fit the AR model to AirPassengers
+AR <- arima(AirPassengers, order= c(1, 0, 0))
+print(AR)
+
+# Run the following commands to plot the series and fitted values
+ts.plot(AirPassengers)
+AR_fitted <- AirPassengers - residuals(AR)
+points(AR_fitted, type = "l", col = 2, lty = 2)
+
+```
+
+Simple forecasts from an estimatesd AR model
+```{r}
+# Fit an AR model to Nile
+AR_fit <-arima(Nile, order  = c(1, 0, 0))
+print(AR_fit)
+
+# Use predict() to make a 1-step forecast
+predict_AR <- predict(AR_fit)
+
+# Obtain the 1-step forecast using $pred[1]
+predict_AR$pred[1]
+
+# Use predict to make 1-step through 10-step forecasts
+predict(AR_fit, n.ahead = 10)
+
+# Run to plot the Nile series plus the forecast and 95% prediction intervals
+ts.plot(Nile, xlim = c(1871, 1980))
+AR_forecast <- predict(AR_fit, n.ahead = 10)$pred
+AR_forecast_se <- predict(AR_fit, n.ahead = 10)$se
+points(AR_forecast, type = "l", col = 2)
+points(AR_forecast - 2*AR_forecast_se, type = "l", col = 2, lty = 2)
+points(AR_forecast + 2*AR_forecast_se, type = "l", col = 2, lty = 2)
+
+```
+
+# Chapter 5 - Simple Moving Average
+
+Simulate simple moving average model
+```{r}
+# Generate MA model with slope 0.5
+x <- arima.sim(model = list(ma = 0.5), n = 100)
+
+# Generate MA model with slope 0.9
+y <- arima.sim(model = list(ma = 0.9), n = 100)
+
+# Generate MA model with slope -0.5
+z <- arima.sim(model = list(ma = -0.5), n = 100)
+
+# Plot all three models together
+plot.ts(cbind(x, y, x))
+
+```
+Estimate ACF for a moving average
+```{r}
+# Calculate ACF for x
+acf(x)
+
+# Calculate ACF for y
+acf(y)
+
+# Calculate ACF for z
+acf(z)
+
+```
+
+Estimate the simple moving average model
+```{r}
+# Fit the MA model to x
+arima(x, order = c(0, 0, 1))
+
+# Paste the slope (ma1) estimate below
+0.7928
+
+# Paste the slope mean (intercept) estimate below
+0.1589
+
+# Paste the innovation variance (sigma^2) estimate below
+0.9576
+
+# Fit the MA model to Nile
+MA <- arima(Nile, order = c(0, 0, 1))
+print(MA)
+
+# Plot Nile and MA_fit 
+ts.plot(Nile)
+MA_fit <- Nile - resid(MA)
+points(MA_fit, type = "l", col = 2, lty = 2)
+
+```
+
+Simple Forecasts with the estimated MA model
+```{r}
+# Make a 1-step forecast based on MA
+predict_MA <- predict(MA)
+
+# Obtain the 1-step forecast using $pred[1]
+predict_MA$pred[1]
+
+# Make a 1-step through 10-step forecast based on MA
+predict(MA, n.ahead = 10)
+
+# Plot the Nile series plus the forecast and 95% prediction intervals
+ts.plot(Nile, xlim = c(1871, 1980))
+MA_forecasts <- predict(MA, n.ahead = 10)$pred
+MA_forecast_se <- predict(MA, n.ahead = 10)$se
+points(MA_forecasts, type = "l", col = 2)
+points(MA_forecasts - 2*MA_forecast_se, type = "l", col = 2, lty = 2)
+points(MA_forecasts + 2*MA_forecast_se, type = "l", col = 2, lty = 2)
+
+```
+
+AR vs MA fit
+```{r}
+# Find correlation between AR_fit and MA_fit
+cor(AR_fit, MA_fit)
+
+# Find AIC of AR
+AIC(AR)
+
+# Find AIC of MA
+AIC(MA)
+
+# Find BIC of AR
+BIC(AR)
+
+# Find BIC of MA
+BIC(MA)
+
+```
+

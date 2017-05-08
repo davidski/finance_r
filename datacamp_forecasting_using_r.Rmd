@@ -11,7 +11,7 @@ library(forecast)
 library(ggplot2)
 ```
 
-#Chapter 1
+# Chapter 1
 ```{r}
 # Read the data from Excel into R
 #mydata <- read_excel("exercise1.xlsx")
@@ -29,6 +29,7 @@ autoplot(myts, facets = TRUE)
 # Plot the data without facetting
 autoplot(myts, facets = FALSE)
 
+
 # Plot the four series
 autoplot(gold)
 autoplot(woolyrnq)
@@ -36,17 +37,88 @@ autoplot(gas)
 autoplot(taylor)
 
 
-
-
 # Which observation in the gold series is an outlier?
-goldoutlier <- ___
+goldoutlier <- which.max(gold)
+goldoutlier
 
 # Seasonal frequencies of gold, woolrnq, gas, taylor
-freq <- c(___, ___, ___, ___)
+freq <- c(frequency(gold), frequency(woolyrnq), frequency(gas), frequency(taylor))
+freq
+```
+
+## Seasonal Plots
+```{r}
+# Load the packages we will need
+library(fpp2)
+
+# Make plots of the a10 data
+autoplot(a10)
+ggseasonplot(a10)
+
+
+
+# Produce a polar coordinate season plot for the a10 data
+ggseasonplot(a10, polar = TRUE)
+
+# Restrict the ausbeer data to start in 1992
+beer <- window(ausbeer, start = 1992)
+
+# Make plots of the beer data
+autoplot(beer)
+ggsubseriesplot(beer)
+```
+
+## Autocorrelation of non-seasonal time series
+```{r}
+# autoplot of the oil data:
+autoplot(oil)
+
+# lag plot of the oil data:
+gglagplot(oil)
+
+# ACF plot of the oil data:
+ggAcf(oil)
+
 
 ```
 
+## Autocorrelation of seasonal and cyclic time series
+```{r}
+# Plots of annual sunspot numbers
+autoplot(sunspot.year)
+ggAcf(sunspot.year)
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+# Plots of traffic on the Hyndsight blog
+autoplot(hyndsight)
+ggAcf(hyndsight)
+
+
+# Maximum autocorrelations at lags
+maxlags <- c(1, 7)
+```
+
+## Stock prices and white noise
+```{r}
+# Plot the original series
+autoplot(goog)
+
+
+# Plot the differenced series
+autoplot(diff(goog))
+
+# ACF of the differenced series
+ggAcf(diff(goog))
+
+# Ljung-Box test of the differenced series
+Box.test(diff(goog), lag = 10, type="Ljung")
+```
+
+
+# Chapter 2
+
+# Chapter 3
+
+# Chapter 4
+
+# Chapter 5

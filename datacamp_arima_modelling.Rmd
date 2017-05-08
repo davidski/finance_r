@@ -418,3 +418,110 @@ sarima(globtemp, 0, 1, 2)
 
 
 # Chapter 4 - Seasonal ARIMA
+
+
+## Fitting a Pure Seasonal Model
+
+```{r}
+# Plot sample P/ACF to lag 60 and compare to the true values
+acf2(x, max.lag = 60)
+
+# Fit the seasonal model to x
+sarima(x, p = 0, d = 0, q = 0, P = 1, D = 0, Q = 1, S = 12)
+
+```
+
+## Fit a mixed seasonal model
+```{r}
+# Plot sample P/ACF pair to lag 60 and compare to actual
+acf2(x, max.lag=60)
+
+
+# Fit the seasonal model to x
+sarima(x, 0, 0, 1, 0, 0, 1, 12)
+
+```
+
+## Data Analysis - Unemployment I
+```{r}
+# Plot unemp 
+plot(unemp)
+
+# Difference your data and plot it
+d_unemp <- diff(unemp)
+plot(d_unemp)
+
+
+# Seasonally difference d_unemp and plot it
+dd_unemp <- diff(d_unemp, lag = 12)  
+plot(dd_unemp)
+
+
+```
+
+## Data Analysis - Unemployment I
+```{r}
+# Plot P/ACF pair of fully differenced data to lag 60
+dd_unemp <- diff(diff(unemp), lag = 12)
+acf2(dd_unemp, max.lag=60)
+
+
+# Fit an appropriate model
+sarima(unemp, p=2, d=1, q=0, P=0, D=1, Q=1, S=12 )
+
+```
+## Data Analysis - Commodity Prices
+```{r}
+# Plot differenced chicken
+plot(diff(chicken))
+
+# Plot P/ACF pair of differenced data to lag 60
+acf2(diff(chicken), max.lag = 60)
+
+# Fit ARIMA(2,1,0) to chicken - not so good
+sarima(chicken, 2, 1, 0)
+
+# Fit SARIMA(2,1,0,1,0,0,12) to chicken - that works
+sarima(chicken, 2, 1, 0, 1, 0, 0, 12)
+
+```
+
+## Data Analysis - Birth Rate
+```{r}
+# Plot P/ACF to lag 60 of differenced data
+d_birth <- diff(birth)
+acf2(d_birth, max.lag = 60)
+
+# Plot P/ACF to lag 60 of seasonal differenced data
+dd_birth <- diff(d_birth, lag = 12)
+acf2(dd_birth, max.lag = 60)
+
+# Fit SARIMA(0,1,1)x(0,1,1)_12. What happens?
+sarima(birth, 0, 1, 1, 0, 1, 1, 12)
+
+# Add AR term and conclude
+sarima(birth, 1, 1, 1, 0, 1, 1, 12)
+
+```
+
+## Forecasting monthly unemployment
+```{r}
+# Fit your previous model to unemp and check the diagnostics
+sarima(unemp, 2, 1, 0, 0, 1, 1, 12)
+
+# Forecast the data 3 years into the future
+sarima.for(unemp, 2, 1, 0, 0, 1, 1, 12, n.ahead=36)
+
+```
+
+## How hard is it to forecast future commodities prices
+```{r}
+# Fit the chicken model again and check diagnostics
+sarima(chicken, 2, 1, 0, 1, 0, 0, 12)
+
+# Forecast the chicken data 5 years into the future
+sarima.for(chicken, 2, 1, 0, 1, 0, 0, 12, n.ahead=60)
+
+
+```
+

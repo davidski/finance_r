@@ -9,7 +9,7 @@ library(xts)
 ```
 
 # Chapter 1 - Time Series Data and Models
-Data Play
+## Data Play
 ```{r}
 # View a detailed description of AirPassengers
 help(AirPassengers)
@@ -163,7 +163,7 @@ plot(diff(x))
 
 ```
 
-Detrending data
+## Detrending data
 ```{r}
 # Plot globtemp and detrended globtemp
 par(mfrow = c(2,1))
@@ -177,7 +177,7 @@ plot(diff(cmort))
 
 ```
 
-Dealing with trend and heterscedasticity
+## Dealing with trend and heterscedasticity
 ```{r}
 # astsa and xts are preloaded 
 
@@ -195,7 +195,7 @@ plot(diff(log(djia$Close)))
  
 ```
 
-Simulating ARIMA models
+## Simulating ARIMA models
 ```{r}
 # Generate and plot white noise
 WN <- arima.sim(list(order=c(0, 0, 0)), n=200)
@@ -214,10 +214,110 @@ plot(AR)
 ```
 
 # Chapter 2 - Fitting ARMA Models
+
+
+## Fitting an AR(1) model
 ```{r}
+# Generate 100 observations from the AR(1) model
+x <- arima.sim(model = list(order = c(1, 0, 0), ar = .9), n = 100) 
+
+# Plot the generated data 
+plot(x)
+
+# Plot the sample P/ACF pair
+acf2(x)
+
+# Fit an AR(1) to the data and examine the t-table
+sarima(x, p=1, d=0, q=0)
+
+```
+
+## Fitting an AR2 model
+```{r}
+# astsa is preloaded
+x <- arima.sim(model = list(order = c(2, 0, 0), ar = c(1.5, -.75)), n = 200)
+
+# Plot x
+plot(x)
+
+# Plot the sample P/ACF of x
+acf2(x)
+
+# Fit an AR(2) to the data and examine the t-table
+sarima(x, 2, 0, 0)
+
+```
+
+## Fitting an MA(1) model
+```{r}
+# astsa is preloaded
+#x <- arima.sim(model = list(order = c(0, 0, 1), ma = -.8), n = 100)
+# Plot x
+plot(x)
+
+# Plot the sample P/ACF of x
+acf2(x)
+
+# Fit an MA(1) to the data and examine the t-table
+sarima(x, 0, 0, 1)
+
+```
+
+## Fitting an ARMA model
+```{r}
+# astsa is preloaded
+x <- arima.sim(model = list(order = c(2, 0, 1), ar = c(1, -.9), ma = .8), n = 250)
+
+# Plot x
+plot(x)
+
+# Plot the sample P/ACF of x
+acf2(x)
+
+# Fit an ARMA(2,1) to the data and examine the t-table
+sarima(x, 2, 0, 1)
+
+```
+
+## Model CHoice I
+```{r}
+dl_varve <- diff(log(varve))
+# Fit an MA(1) to dl_varve.   
+sarima(dl_varve, 0, 0, 1)
+
+
+# Fit an MA(2) to dl_varve. Improvement?
+sarima(dl_varve, 0, 0, 2)
+
+# Fit an ARMA(1,1) to dl_varve. Improvement?
+sarima(dl_varve, 1, 0, 1)
+
+```
+
+## Residual Analysis I
+```{r}
+# Fit an MA(1) to dl_varve. Examine the residuals  
+sarima(dl_varve, 0, 0, 1)
+
+# Fit an ARMA(1,1) to dl_varve. Examine the residuals
+sarima(dl_varve, 1, 0, 1)
+
+
+```
+
+## ARMA Get In
+```{r}
+# Fit an MA(1) to dl_varve. Examine the residuals  
+sarima(dl_varve, 0, 0, 1)
+
+# Fit an ARMA(1,1) to dl_varve. Examine the residuals
+sarima(dl_varve, 1, 0, 1)
+
 
 ```
 
 # Chapter 3 - ARIMA Models
+
+
 
 # Chapter 4 - Seasonal ARIMA

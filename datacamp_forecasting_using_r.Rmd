@@ -1,0 +1,52 @@
+---
+title: "Forecasting Using R"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+```{r setup}
+library(forecast)
+library(ggplot2)
+```
+
+#Chapter 1
+```{r}
+# Read the data from Excel into R
+#mydata <- read_excel("exercise1.xlsx")
+mydata <- structure(list(c("Mar-81", "Jun-81", "Sep-81", "Dec-81", "Mar-82", "Jun-82", "Sep-82", "Dec-82", "Mar-83", "Jun-83", "Sep-83", "Dec-83", "Mar-84", "Jun-84", "Sep-84", "Dec-84", "Mar-85", "Jun-85", "Sep-85", "Dec-85", "Mar-86", "Jun-86", "Sep-86", "Dec-86", "Mar-87", "Jun-87", "Sep-87", "Dec-87", "Mar-88", "Jun-88", "Sep-88", "Dec-88", "Mar-89", "Jun-89", "Sep-89", "Dec-89", "Mar-90", "Jun-90", "Sep-90", "Dec-90", "Mar-91", "Jun-91", "Sep-91", "Dec-91", "Mar-92", "Jun-92", "Sep-92", "Dec-92", "Mar-93", "Jun-93", "Sep-93", "Dec-93", "Mar-94", "Jun-94", "Sep-94", "Dec-94", "Mar-95", "Jun-95", "Sep-95", "Dec-95", "Mar-96", "Jun-96", "Sep-96", "Dec-96", "Mar-97", "Jun-97", "Sep-97", "Dec-97", "Mar-98", "Jun-98", "Sep-98", "Dec-98", "Mar-99", "Jun-99", "Sep-99", "Dec-99", "Mar-00", "Jun-00", "Sep-00", "Dec-00", "Mar-01", "Jun-01", "Sep-01", "Dec-01", "Mar-02", "Jun-02", "Sep-02", "Dec-02", "Mar-03", "Jun-03", "Sep-03", "Dec-03", "Mar-04", "Jun-04", "Sep-04", "Dec-04", "Mar-05", "Jun-05", "Sep-05", "Dec-05"), Sales = c(1020.2, 889.2, 795, 1003.9, 1057.7, 944.4, 778.5, 932.5, 996.5, 907.7, 735.1, 958.1, 1034.1, 992.8, 791.7, 914.2, 1106.5, 985.1, 823.9, 1025.1, 1064.7, 981.9, 828.3, 940.7, 991.1, 1021.2, 796.7, 986.6, 1054.2, 1018.7, 815.6, 1010.6, 1071.5, 954, 822.9, 867.5, 1002.3, 972, 782.9, 972.8, 1108, 943.7, 806.1, 954.2, 1115.5, 927.1, 800.7, 955.7, 1049.8, 886, 786.4, 991.3, 1113.9, 924.5, 771.4, 949.8, 990.5, 1071.4, 854.1, 929.8, 959.6, 991.1, 832.9, 1006.1, 1040.7, 1026.3, 785.9, 997.6, 1055, 925.6, 805.6, 934.1, 1081.7, 1062.3, 798.8, 1014.3, 1049.5, 961.7, 793.4, 872.3, 1014.2, 952.6, 792.4, 922.3, 1055.9, 906.2, 811.2, 1005.8, 1013.8, 905.6, 957.3, 1059.5, 1090.6, 998.9, 866.6, 1018.7, 1112.5, 997.4, 826.8, 992.6), AdBudget = c(659.2, 589, 512.5, 614.1, 647.2, 602, 530.7, 608.4, 637.9, 582.4, 506.8, 606.7, 658.7, 614.9, 489.9, 586.5, 663, 591.7, 502.2, 616.4, 647.1, 615.5, 514.8, 609.1, 641.3, 620.2, 511.2, 621.3, 645.3, 616, 503.2, 617.5, 642.8, 585.6, 520.6, 608.6, 645.7, 597.4, 499.8, 601.8, 650.8, 588.3, 491.6, 603.3, 663.2, 614, 506.3, 606.2, 639.5, 585.9, 492.2, 610.4, 660.8, 612.2, 509.2, 612.1, 653.2, 605.3, 506.6, 597.4, 635.2, 611.6, 503.8, 609.9, 645.2, 609.8, 512.1, 603.7, 639.4, 601.6, 497, 602.8, 647.3, 612.5, 492.2, 610.8, 646.5, 603.3, 503.8, 598.3, 649.4, 620.2, 497.9, 609.2, 665.9, 600.4, 502.3, 605.6, 647.6, 583.5, 502.5, 625.9, 648.7, 610.7, 519.1, 634.9, 663.1, 583.3, 508.6, 634.2), GDP = c(251.8, 290.9, 290.8, 292.4, 279.1, 254, 295.6, 271.7, 259.6, 280.5, 287.2, 278, 256.8, 271, 300.9, 289.8, 266.8, 273.7, 301.3, 285.6, 270.6, 274.6, 299.7, 275.9, 279.3, 290.8, 295.6, 271.9, 267.4, 281, 309, 266.7, 283.5, 282.3, 289.2, 270.7, 266.5, 287.9, 287.6, 283.4, 266.4, 292.3, 330.6, 286.2, 259.2, 263.7, 288.2, 274.1, 287.1, 285.5, 303.7, 275.6, 249.3, 272.9, 289.8, 269.2, 261.3, 292.9, 304.6, 276.3, 268.2, 293.5, 311.1, 273.7, 267.5, 271.9, 308.8, 282.9, 268.4, 271.4, 292.1, 287.6, 258, 282.9, 295, 271.2, 275.4, 284, 300.9, 277.4, 273.8, 288.4, 283.4, 273.4, 271.5, 283.6, 290.6, 289.1, 282.2, 285.6, 304, 271.5, 263.9, 288.3, 290.2, 284, 270.9, 294.7, 292.2, 255.1)), class = c("tbl_df", "tbl", "data.frame"), row.names = c(NA, -100L), .Names = c("", "Sales", "AdBudget", "GDP"))
+
+# Create the `ts` object
+myts <- ts(mydata[, 2:4], start = c(1981, 1), frequency = 4)
+myts
+```
+## Time Series Plots
+```{r}
+# Plot the data with facetting
+autoplot(myts, facets = TRUE)
+
+# Plot the data without facetting
+autoplot(myts, facets = FALSE)
+
+# Plot the four series
+autoplot(gold)
+autoplot(woolyrnq)
+autoplot(gas)
+autoplot(taylor)
+
+
+
+
+# Which observation in the gold series is an outlier?
+goldoutlier <- ___
+
+# Seasonal frequencies of gold, woolrnq, gas, taylor
+freq <- c(___, ___, ___, ___)
+
+```
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).

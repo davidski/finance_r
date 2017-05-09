@@ -206,6 +206,144 @@ data.frame(h = 1:8, MSE = mse) %>%
 
 # Chapter 3 - Exponential Smoothing
 
+## simple exponential smoothing
+```{r}
+# Use the ses function to forecast the next 10 years of winning times
+fc <- ses(marathon, h=10)
+
+# Use the summary function to see the model parameters
+summary(fc)
+
+# Use the autoplot function to plot the forecasts
+autoplot(fc)
+
+# Add the one-step forecasts for the training data to the plot
+autoplot(fc) + autolayer(fitted(fc))
+```
+
+## SES vs Naive
+```{r}
+# Create a training set
+train <- subset(marathon, end=100)
+
+# Compute SES and naive forecasts
+fcses <- ses(train, h=20)
+fcnaive <- naive(train, h=20)
+
+# Calculate forecast accuracy measures
+accuracy(fcses, marathon)
+accuracy(fcnaive, marathon)
+
+# Best forecasts
+fcbest <- fcnaive
+```
+
+## Holt's trend methods
+```{r}
+# Produce 10 year forecasts of austa using Holt's method
+fcholt <- holt(austa, h=10)
+
+# Look at fitted model
+summary(fcholt)
+
+# Plot the forecasts
+autoplot(fcholt)
+
+# Check that the residuals look like white noise
+checkresiduals(fcholt)
+```
+
+## Holt-WInter's with monthly data
+```{r}
+# Plot the data
+autoplot(a10)
+
+# Produce 3 year forecasts
+fc <- hw(a10, h=36, seasonal="multiplicative")
+
+# Check residuals look like white noise (set whitenoise to be TRUE or FALSE)
+checkresiduals(fc)
+whitenoise <- FALSE
+
+# Plot forecasts
+autoplot(fc)
+```
+
+## Holt-Winters method with daily data
+```{r}
+# Create training data
+train <- subset(hyndsight, end = length(hyndsight)-28)
+
+# Holt-Winters' additive forecasts
+fchw <- hw(train, h=28, seasonal="additive")
+
+# Seasonal naive forecasts
+fcsn <- snaive(train, h=28)
+
+# Find best forecasts
+accuracy(fchw, hyndsight)
+accuracy(fcsn, hyndsight)
+
+# Plot best forecasts
+autoplot(fchw)
+```
+
+## Automatic forecasting with exponential smoothing
+```{r}
+# Fit ETS model to austa
+fit1 <- ets(austa)
+
+# Check residuals
+checkresiduals(fit1)
+
+# Plot forecasts
+fit1 %>% forecast() %>% autoplot()
+
+# Repeat for hyndsight data
+fit2 <- ets(hyndsight)
+checkresiduals(fit2)
+fit2 %>% forecast() %>% autoplot()
+
+
+# Which model fails test? (TRUE or FALSE)
+fit1fail <- FALSE
+fit2fail <- TRUE
+```
+
+## ETS vs SNaive
+```{r}
+# Function to return ETS forecasts
+fets <- function(y, h) {
+  forecast(ets(y), h = h)
+}
+
+# Apply tsCV for both methods
+e1 <- tsCV(cement, fets, h=4)
+e2 <- tsCV(cement, snaive, h=4)
+
+# Compute MSE of resulting errors (watch out for missing values)
+sum(e1^2, na.rm=TRUE)
+sum(e2^2, na.rm=TRUE)
+
+# Best forecast MSE
+bestmse <- sum(e2^2, na.rm=TRUE)
+```
+
+```{r}
+# Plot the lynx series
+autoplot(lynx)
+
+# Use ETS to model the lynx series
+fit <- ets(lynx)
+
+# Look at the selected model and parameters
+summary(fit)
+
+# Plot 20-year forecasts of the lynx series
+fit %>% forecast(h=20) %>% autoplot()
+```
+
+
 # Chapter 4 - Forecasting with ARIMA Models
 
 # Chapter 5 - Advanced Methods

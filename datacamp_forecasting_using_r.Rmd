@@ -11,7 +11,7 @@ library(forecast)
 library(ggplot2)
 ```
 
-# Chapter 1
+# Chapter 1 - Exploring and Visualizing Time Series
 ```{r}
 # Read the data from Excel into R
 #mydata <- read_excel("exercise1.xlsx")
@@ -115,10 +115,97 @@ Box.test(diff(goog), lag = 10, type="Ljung")
 ```
 
 
-# Chapter 2
+# Chapter 2 - Benchmark Methods and Forecast
 
-# Chapter 3
+##Naive forecasting methods
+```{r}
+# Forecast the goog series
+fcgoog <- naive(goog, h = 20)
 
-# Chapter 4
+# Plot and summarize the forecasts
+autoplot(fcgoog)
+summary(fcgoog)
 
-# Chapter 5
+# Forecast the ausbeer series
+fcbeer <- snaive(ausbeer, h=16)
+
+# Plot and summarize the forecasts
+autoplot(fcbeer)
+summary(fcbeer)
+```
+
+## Checking time series residuals
+```{r}
+# Check the residuals from the naive forecasts applied to the goog series
+goog %>% naive() %>% checkresiduals
+
+# Do they look like white noise (TRUE or FALSE)
+googwn <- TRUE
+
+# Check the residuals from the seasonal naive forecasts applied to the ausbeer series
+ausbeer %>% snaive %>% checkresiduals
+
+# Do they look like white noise (TRUE or FALSE)
+beerwn <- FALSE
+```
+
+## Evaluating forecast accuracy of non-seasonal methods
+
+```{r}
+# Gold has 1108 obs, take 1000 for train, and 108 for test
+
+# Create the training data
+train <- subset(gold, end = 1000)
+
+# Compute naive forecasts
+naive.fc <- naive(train, h = 108)
+
+# Compute mean forecasts
+mean.fc <- meanf(train, h = 108)
+
+# Compute accuracy statistics
+accuracy(naive.fc, gold)
+accuracy(mean.fc, gold)
+
+# Best forecasts
+bestforecasts <- naive.fc
+```
+
+## Evaluating forecast accuracy of seasonal methods
+```{r}
+# Create 3 training series
+train1 <- window(vn[,"Melbourne"], end = c(2014, 4))
+train2 <- window(vn[,"Melbourne"], end = c(2013, 4))
+train3 <- window(vn[,"Melbourne"], end = c(2012, 4))
+
+# Produce snaive forecasts
+fc1 <- snaive(train1, h = 4)
+fc2 <- snaive(train2, h = 4)
+fc3 <- snaive(train3, h = 4)
+
+# Compare forecast accuracy
+accuracy(fc1, vn[,"Melbourne"])["Test set", "MAPE"]
+accuracy(fc2, vn[,"Melbourne"])["Test set", "MAPE"]
+accuracy(fc3, vn[,"Melbourne"])["Test set", "MAPE"]
+```
+
+## Using tsCV for time series cross-validation
+```{r}
+# Compute cross-validated errors for up to 8 steps ahead (one horizon per column)
+e <- matrix(NA_real_, nrow = 1000, ncol = 8)
+for(h in 1:8)
+  e[,h] <- tsCV(goog, naive, h = h)
+  
+# Compute the MSE values (watch out for missing values).
+mse <- colMeans(e^2, na.rm = TRUE)
+
+# Plot the MSE values (y) against the forecast horizon (x)
+data.frame(h = 1:8, MSE = mse) %>%
+  ggplot(aes(x = h, y = MSE)) + geom_point()
+```
+
+# Chapter 3 - Exponential Smoothing
+
+# Chapter 4 - Forecasting with ARIMA Models
+
+# Chapter 5 - Advanced Methods

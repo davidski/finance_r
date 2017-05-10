@@ -346,4 +346,168 @@ fit %>% forecast(h=20) %>% autoplot()
 
 # Chapter 4 - Forecasting with ARIMA Models
 
+## Box-Cox Transformations for time series
+```{r}
+# Plot the series
+autoplot(a10)
+
+
+# Try various values of lambda in Box-Cox transformations
+a10 %>% BoxCox(lambda = 0.1) %>% autoplot()
+a10 %>% BoxCox(lambda = 0.1) %>% autoplot()
+a10 %>% BoxCox(lambda = 0.2) %>% autoplot()
+a10 %>% BoxCox(lambda = 0.3) %>% autoplot()
+
+
+# BoxCox.lambda
+BoxCox.lambda(a10)
+```
+
+## Non-seasonal differencing for stationarity
+```{r}
+# Plot the US female murder rate
+autoplot(wmurders)
+
+# Plot the differenced murder rate
+autoplot(diff(wmurders))
+
+
+# Plot the ACF of the differenced murder rate
+ggAcf(diff(wmurders))
+```
+```{r}
+# Plot the data
+autoplot(h02)
+
+# Take logs and seasonal differences of h02
+difflogh02 <- diff(log(h02), lag=12)
+
+# Plot the resulting logged and differenced data
+autoplot(difflogh02)
+
+# Take another difference and plot
+ddifflogh02 <- diff(difflogh02)
+autoplot(ddifflogh02)
+
+# ACF of final series
+ggAcf(ddifflogh02)
+```
+
+## Automatic ARIMA models for non-seasonal time series
+```{r}
+# Fit an automatic ARIMA model to the austa series
+fit <- auto.arima(austa)
+
+# Check the residuals look like white noise (set residualsok to TRUE or FALSE)
+checkresiduals(fit)
+residualsok <- TRUE
+
+# Summarize the model
+summary(fit)
+
+# What is the AICc value (2 dec places) and the number of differences used?
+AICc <- -14.46
+d <- 1
+
+# Forecasts
+fit %>% forecast(h=10) %>% autoplot()
+```
+## Forecasting wiht ARIMA models
+```{r}
+#Plot forecasts from an ARIMA(0,1,1) model with no drift
+austa %>% Arima(order=c(0, 1, 1), include.constant=FALSE) %>% forecast() %>% autoplot()
+
+#Plot forecasts from an ARIMA(2,1,3) model with drift
+austa %>% Arima(order=c(2, 1, 3),include.constant=TRUE) %>% forecast() %>% autoplot()
+
+#Plot forecasts from an ARIMA(0,0,1) model with a constant.
+austa %>% Arima(order=c(0, 0, 1),include.constant = TRUE) %>% forecast() %>% autoplot()
+
+#Plot forecasts from an ARIMA(0,2,1) model with no constant.
+austa %>% Arima(order=c(0, 2, 1), include.constant=FALSE) %>% forecast() %>% autoplot()
+```
+
+## COmparing auto.arima and ets on non-seasonal data
+```{r}
+# Set up forecast functions for ETS and ARIMA models
+fets <- function(x, h) {
+  forecast(ets(x), h = h)
+}
+farima <- function(x, h) {
+  forecast(auto.arima(x), h = h)
+}
+
+# Compute CV errors for ETS
+e1 <- tsCV(austa, fets, h = 1)
+
+# Compute CV errors for ARIMA
+e2 <- tsCV(austa, farima, h = 1)
+
+# Find MSE of each model class
+sum(e1^2, na.rm=TRUE)
+sum(e2^2, na.rm=TRUE)
+
+# Plot 10-year forecasts using the best model class
+austa %>% auto.arima() %>% forecast(h=10) %>% autoplot()
+```
+
+## Automatic ARIMA models for seasonal time series
+```{r}
+# Check that the logged h02 data have stable variance
+h02 %>% log() %>% autoplot()
+
+# Fit a seasonal ARIMA model to cement with lambda=0
+fit <- auto.arima(h02, lambda = 0)
+
+# Summarize the fitted model
+summary(fit)
+
+# Record the amount of lag-1 differencing and seasonal differencing used
+d <- 0
+D <- 1
+
+# Plot 2-year forecasts
+fit %>% forecast(h=24) %>% autoplot()
+```
+
+## Exploring auto.arima options
+```{r}
+# Use the default options to find an ARIMA model for euretail
+fit1 <- auto.arima(euretail)
+
+# Don't use a stepwise search.
+fit2 <- auto.arima(euretail, stepwise = FALSE)
+
+# AICc of best model
+summary(fit1)
+summary(fit2)
+AICc <- 68.39
+
+# Compute 2-year forecasts from best model
+fit2 %>% forecast(h=8) %>% autoplot()
+```
+
+## Comparing auto.arima and ets on seasonal data
+```{r}
+# Use 20 years of the qcement data beginning in 1988
+train <- window(qcement, start = 1988, end = c(2007, 4))
+
+# Fit an ARIMA and an ETS model to the training data
+fit1 <- auto.arima(train)
+fit2 <- ets(train)
+
+# Check that both models have white noise residuals
+checkresiduals(fit1)
+checkresiduals(fit2)
+
+# Produce forecasts for each model
+fc1 <- forecast(fit1, h = 25)
+fc2 <- forecast(fit2, h = 25)
+
+# Find best model based on MSE (set best to fc1 or fc2)
+accuracy(fc1, qcement)
+accuracy(fc2, qcement)
+best <- fc2
+```
+
 # Chapter 5 - Advanced Methods

@@ -511,3 +511,110 @@ best <- fc2
 ```
 
 # Chapter 5 - Advanced Methods
+
+## Forecasting Sales Allowing for Advertising Expenditure
+```{r}
+# Time plot of both variables
+autoplot(advert, facets=TRUE)
+
+# Fit ARIMA model
+fit <- auto.arima(advert[, "sales"], xreg = advert[, "advert"], stationary = TRUE)
+
+# Check model. Increase in sales for each unit increase in advertising
+coefficients(fit)
+salesincrease <- coefficients(fit)[3]
+
+# Forecast 
+fc <- forecast(fit, xreg = rep(10, 6))
+
+# Plot forecasts
+autoplot(fc)
+```
+
+## Forecasting Electricity Demand
+```{r}
+# Time plots of demand and temperatures
+autoplot(elec[, c("Demand", "Temperature")], facets=TRUE)
+
+# Matrix of regressors
+xreg <- cbind(MaxTemp = elec[, "Temperature"], 
+              MaxTempSq = elec[, "Temperature"]^2, 
+              Workday = elec[, "Workday"])
+
+# Fit model
+fit <- auto.arima(elec[, "Demand"], xreg = xreg)
+
+# Forecast one day ahead
+forecast(fit, xreg = cbind(20, 20^2, 1))
+```
+
+## Forecasting Weekly Data
+```{r}
+# Set up harmonic regressors of order 13
+harmonics <- fourier(gasoline, K = 13)
+
+# Fit regression model with ARIMA errors
+fit <- auto.arima(gasoline, xreg = harmonics, seasonal = FALSE)
+
+# Forecasts next 3 years
+newharmonics <- fourier(gasoline, K = 13, h = 52*3)
+fc <- forecast(fit, xreg = newharmonics)
+
+# Plot forecasts
+autoplot(fc)
+```
+
+## Harmonic Regression for multiple seasonality
+
+```{r}
+# Fit a harmonic regression using order 10 for each type of seasonality.
+fit <- tslm(taylor ~ fourier(taylor, K = c(10,10)))
+
+# Forecast 20 working days ahead
+fc <- forecast(fit, newdata = data.frame(fourier(taylor, K = c(10,10), h = 20*48)))
+
+# Plot the forecasts
+autoplot(fc)
+
+# Check the residuals
+checkresiduals(fit)
+```
+
+## Forecasting Call Bookings
+```{r}
+# Plot the calls data
+autoplot(calls)
+
+# Set up the xreg matrix
+xreg <- fourier(calls, K = c(10, 0))
+
+# Fit a dynamic regression model
+fit <- auto.arima(calls, xreg = xreg, seasonal = FALSE, stationary = TRUE)
+
+# Check the residuals
+checkresiduals(fit)
+
+# Plot forecasts for 10 working days ahead
+fc <- forecast(fit, xreg = fourier(calls, K = c(10, 0), h=1690))
+autoplot(fc)
+```
+
+## TBATS models for electricity demand
+```{r}
+# Plot the gas data
+autoplot(gas)
+
+# Fit a TBATS model to the gas data
+fit <- tbats(gas)
+
+# Forecast the series for the next 5 years
+fc <- forecast(fit, h=60)
+
+# Plot the forecasts
+autoplot(fc)
+
+# Record the Box-Cox parameter (to 3 decimal places), and the order of the Fourier terms
+lambda <- 0.082
+K <- 5
+```
+

@@ -56,7 +56,7 @@ flights_xts["2014-06"]
 
 ```
 
-## Visualizing FLight Data
+## Visualizing Flight Data
 ```{r}
 # Use plot.xts() to view total monthly flights into BOS over time
 plot.xts(flights_xts$total_flights)
@@ -239,9 +239,239 @@ head(flights_weather)
 
 # Chapter 3 - Economic Data
 
-# Chapter 4 - Sports Data
+## Exploring Economic Data
+```{r}
+# Get a summary of your GDP data
+summary(gdp)
+
+
+# Convert GDP date column to time object
+gdp$date <- as.yearqtr(gdp$date)
+
+# Convert GDP data to xts
+gdp_xts <- as.xts(gdp[, -1], order.by = gdp$date)
+
+# Plot GDP data over time
+plot.xts(gdp_xts)
+
+```
+
+## Replacing Missing Data - I
+```{r}
+# Fill NAs in gdp_xts with the last observation carried forward
+gdp_locf <- na.locf(gdp_xts)
+
+# Fill NAs in gdp_xts with the next observation carried backward 
+gdp_nocb <- na.locf(gdp_xts, fromLast = TRUE)
+
+# Produce a plot for each of your new xts objects
+par(mfrow = c(2,1))
+plot.xts(gdp_locf, major.format = "%Y")
+plot.xts(gdp_nocb, major.format = "%Y")
+
+# Query for GDP in 1993 in both gdp_locf and gdp_nocb
+gdp_locf["1993"]
+gdp_nocb["1993"]
+
+```
+
+## Replacing Missing Data - II
+```{r}
+# Fill NAs in gdp_xts using linear approximation
+gdp_approx <- na.approx(gdp_xts)
+
+# Plot your new xts object
+plot.xts(gdp_approx, major.format = "%Y")
+  
+# Query for GDP in 1993 in gdp_approx
+gdp_approx["1993"]
+
+```
+
+## Exploring Unemployment Data
+```{r}
+# View a summary of your unemployment data
+summary(unemployment)
+
+# Use na.approx to remove missing values in unemployment data
+unemployment <- na.approx(unemployment)
+
+# Plot new unemployment data
+plot.zoo(unemployment, plot.type = "single", lty = lty)
+legend("topright", lty = lty, legend = labels, bg = "white")
+
+```
+
+## Lagging Unemployment
+```{r}
+# Create a one month lag of US unemployment
+us_monthlag <- lag(unemployment$us, k = 1)
+
+# Create a one year lag of US unemployment
+us_yearlag <- lag(unemployment$us, k = 12)
+
+# Merge your original data with your new lags 
+unemployment_lags <- merge(unemployment, us_monthlag, us_yearlag)
+
+# View the first 15 rows of unemployment_lags
+head(unemployment_lags, n=15)
+
+```
+
+## Differencing Unemployment
 
 ```{r}
+# Generate monthly difference in unemployment
+unemployment$us_monthlydiff <- diff(unemployment$us, lag = 1, differences = 1)
+
+# Generate yearly difference in unemployment
+unemployment$us_yearlydiff <- diff(unemployment$us, lag = 12, differences = 1)
+
+# Plot US unemployment and annual difference
+par(mfrow = c(2,1))
+plot.xts(unemployment$us)
+plot.xts(unemployment$us_yearlydiff, type = "h")
+
+```
+
+## Add discrete rolling sum to GDP data
+```{r}
+# Add a quarterly difference in gdp
+gdp$quarterly_diff <- diff(gdp$gdp, lag = 1, differences = 1)
+
+# Split gdp$quarterly_diff into years
+gdpchange_years <- split(gdp$quarterly_diff, f = "years")
+
+# Use lapply to calculate the cumsum each year
+gdpchange_ytd <- lapply(gdpchange_years, FUN = cumsum)
+
+# Use do.call to rbind the results
+gdpchange_xts <- do.call(rbind, gdpchange_ytd)
+
+# Plot cumulative year-to-date change in GDP
+plot.xts(gdpchange_xts, type = "h")
+
+```
+
+## Add a Continuous Rolling Average to Unemployment Data
+```{r}
+# Use rollapply to calculate the rolling yearly average US unemployment
+unemployment$year_avg <- rollapply(unemployment$us, width = 12, FUN = mean)
+
+# Plot all columns of US unemployment data
+plot.zoo(unemployment[, c("us", "year_avg")], plot.type = "single", lty = lty, lwd = lwd)
+
+```
+
+## Manipulating MA unemployment data
+```{r}
+# Add a one-year lag of MA unemployment
+unemployment$ma_yearlag <- lag(unemployment$ma, k = 12)
+
+# Add a six-month difference of MA unemployment
+unemployment$ma_sixmonthdiff <- diff(unemployment$ma, lag = 6, differences = 1)
+
+# Add a six-month rolling average of MA unemployment
+unemployment$ma_sixmonthavg <- rollapply(unemployment$ma, width = 6, FUN = mean)
+  
+# Add a yearly rolling maximum of MA unemployment
+unemployment$ma_yearmax <- rollapply(unemployment$ma, width = 12, FUN = max)
+
+# View the last year of unemployment data
+tail(unemployment, n=12)
+
+```
+
+
+# Chapter 4 - Sports Data
+
+## Encoding and plotting Red Sox data
+
+```{r}
+# View summary information about your redsox data
+summary(redsox)
+
+# Convert the date column to a time-based format
+redsox$date<- as.Date(redsox$date)
+
+# Convert your red sox data to xts
+redsox_xts <- as.xts(redsox[,-1], order.by = redsox$date)
+
+# Plot the Red Sox score and the opponent score over time
+plot.zoo(redsox_xts[, c("boston_score", "opponent_score")])
+
+```
+
+## Calculate a Closing Average
+```{r}
+# Generate a new variable coding for red sox wins
+redsox_xts$win_loss <- ifelse(redsox_xts$boston_score > redsox_xts$opponent_score, 1, 0)
+
+# Identify the date of the last game each season
+close <- endpoints(redsox_xts, on = "years")
+
+# Calculate average win/loss record at the end of each season
+period.apply(redsox_xts[, "win_loss"], close, mean)
+
+```
+
+## Calculate and plot a seasonal average
+```{r}
+# Split redsox_xts win_loss data into years 
+redsox_seasons <- split(redsox_xts$win_loss, f = "years")
+
+# Use lapply to calculate the cumulative mean for each season
+redsox_ytd <- lapply(redsox_seasons, FUN = cummean)
+
+# Use do.call to rbind the results
+redsox_winloss <- do.call(rbind, redsox_ytd)
+
+# Plot the win_loss average for the 2013 season
+plot.xts(redsox_winloss["2013"], ylim = c(0, 1))
+
+```
+
+## Calculate and plot a rolling average
+```{r}
+# Select only the 2013 season
+redsox_2013 <- redsox_xts["2013"]
+
+# Use rollapply to generate the last ten average
+lastten_2013 <- rollapply(redsox_2013$win_loss, width = 10, FUN = mean)
+
+# Plot the last ten average during the 2013 season
+plot.xts(lastten_2013, ylim = c(0, 1))
+
+```
+
+## Extract weekend games
+```{r}
+# Extract the day of the week of each observation
+weekday <- .indexwday(sports)
+head(weekday)
+
+# Generate an index of weekend dates
+weekend <- which(.indexwday(sports) == 0 | .indexwday(sports) == 6)
+
+# Subset only weekend games
+weekend_games <- sports[weekend]
+head(weekend_games)
+```
+
+## Calculate a rolling average across all sports
+```{r}
+# Generate a subset of sports data with only homegames
+homegames <- sports[sports$homegame == 1]
+
+# Calculate the win/loss average of the last 20 home games
+homegames$win_loss_20 <- rollapply(homegames$win_loss, width = 20, FUN = mean)
+
+# Calculate the win/loss average of the last 100 home games
+homegames$win_loss_100 <-  rollapply(homegames$win_loss, width = 100, FUN = mean)
+
+# Use plot.xts to generate
+plot.zoo(homegames[, c("win_loss_20", "win_loss_100")], plot.type = "single", lty = lty, lwd = lwd)
+
 ```
 
 Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
